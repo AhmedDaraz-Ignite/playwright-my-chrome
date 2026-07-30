@@ -1,0 +1,116 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Run static checks
+        run: /bin/bash tests/lint.sh
+
+  verify:
+    runs-on: macos-15
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install locked development dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Run macOS behavior and standard checks
+        run: |
+          /bin/bash tests/run.sh
+          python3 tests/validate_skill.py
+
+      - name: Smoke-test the real pinned Playwright CLI
+        run: |
+          test "$(node_modules/.bin/playwright-cli --version)" = "0.1.17"
+          smoke_root="$(mktemp -d)"
+          chmod 700 "$smoke_root"
+          touch \
+            "$smoke_root/keychain-token" \
+            "$smoke_root/ps.out" \
+            "$smoke_root/security.log"
+          smoke_output="$(
+            PLAYWRIGHT_ACTIVE_CHROME_TEST_MODE=1 \
+            PLAYWRIGHT_ACTIVE_CHROME_CLI="$GITHUB_WORKSPACE/node_modules/.bin/playwright-cli" \
+            PLAYWRIGHT_ACTIVE_CHROME_NODE="$(command -v node)" \
+            PLAYWRIGHT_ACTIVE_CHROME_RUNTIME_DIR="$smoke_root/runtime" \
+            PLAYWRIGHT_ACTIVE_CHROME_EXECUTABLE="/Applications/Test Chrome.app/Contents/MacOS/Test Chrome" \
+            PLAYWRIGHT_ACTIVE_CHROME_TEST_SECURITY_BIN="$GITHUB_WORKSPACE/tests/mocks/mock-security.sh" \
+            PLAYWRIGHT_ACTIVE_CHROME_TEST_PS_BIN="$GITHUB_WORKSPACE/tests/mocks/mock-ps.sh" \
+            MOCK_SECURITY_LOG="$smoke_root/security.log" \
+            MOCK_KEYCHAIN_TOKEN_FILE="$smoke_root/keychain-token" \
+            MOCK_PS_OUTPUT_FILE="$smoke_root/ps.out" \
+            /bin/bash skills/playwright-active-chrome/scripts/playwright-cli-active.sh doctor
+          )"
+          printf '%s\n' "$smoke_output"
+          grep -F "compatibility: supported (requires 0.1.17)" <<<"$smoke_output"
+
+      - name: Verify Vercel Skills discovery
+        run: |
+          output="$(node_modules/.bin/skills install . --list)"
+          printf '%s\n' "$output"
+          grep -F "playwright-active-chrome" <<<"$output"
+
+      - name: Verify vendor, universal, and wildcard agent installation
+        env:
+          SOURCE_REPOSITORY: ${{ github.workspace }}
+        run: |
+          install_root="$(mktemp -d)"
+          skills_cli="$SOURCE_REPOSITORY/node_modules/.bin/skills"
+          mkdir \
+            "$install_root/vendors" \
+            "$install_root/universal" \
+            "$install_root/wildcard"
+          cd "$install_root/vendors"
+          "$skills_cli" install "$SOURCE_REPOSITORY" \
+            --skill playwright-active-chrome \
+            --agent codex \
+            --agent claude-code \
+            --copy \
+            --yes
+          test -f .agents/skills/playwright-active-chrome/SKILL.md
+          test -f .claude/skills/playwright-active-chrome/SKILL.md
+          test -f .agents/skills/playwright-active-chrome/LICENSE
+          test -f .claude/skills/playwright-active-chrome/LICENSE
+          test -x .agents/skills/playwright-active-chrome/scripts/playwright-cli-active.sh
+          test -x .claude/skills/playwright-active-chrome/scripts/store-extension-token.sh
+          cd "$install_root/universal"
+          "$skills_cli" install "$SOURCE_REPOSITORY" \
+            --skill playwright-active-chrome \
+            --agent universal \
+            --copy \
+            --yes
+          test -f .agents/skills/playwright-active-chrome/SKILL.md
+          test -f .agents/skills/playwright-active-chrome/LICENSE
+          test -x .agents/skills/playwright-active-chrome/scripts/playwright-cli-active.sh
+          cd "$install_root/wildcard"
+          "$skills_cli" install "$SOURCE_REPOSITORY" \
+            --skill playwright-active-chrome \
+            --agent '*' \
+            --copy \
+            --yes
+          test -f .agents/skills/playwright-active-chrome/SKILL.md
+          test -f .agents/skills/playwright-active-chrome/LICENSE
+          test -x .agents/skills/playwright-active-chrome/scripts/playwright-cli-active.sh

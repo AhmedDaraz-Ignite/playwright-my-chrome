@@ -1,0 +1,19 @@
+{
+  "name": "playwright-active-chrome-skill",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Development commands for the Playwright Active Chrome Agent Skill",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.20.0"
+  },
+  "scripts": {
+    "lint": "/bin/bash tests/lint.sh",
+    "test": "/bin/bash tests/run.sh",
+    "verify": "npm run lint && npm test"
+  },
+  "devDependencies": {
+    "@playwright/cli": "0.1.17",
+    "skills": "1.5.21"
+  }
+}

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Playwright Active Chrome"
+  short_description: "Control logged-in Chrome with Playwright CLI"
+  default_prompt: "Use $playwright-active-chrome to complete this task in my existing logged-in Chrome session."
