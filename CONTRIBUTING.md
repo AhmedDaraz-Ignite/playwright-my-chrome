@@ -1,12 +1,14 @@
 # Contributing
 
-Contributions are welcome.
+Pull requests are welcome. This page lists what a change is checked against
+before it merges.
 
 ## Development
 
-This project intentionally has no runtime dependency installer. Install
-`@playwright/cli` separately and keep its supported version synchronized across
-the wrapper, skill instructions, README, tests, and CI.
+This project has no runtime dependency installer, on purpose. Install
+`@playwright/cli` separately, and keep its supported version the same in the
+wrapper, the skill instructions, the README, the tests, and CI. Those five
+places drift apart as soon as one of them is updated alone.
 
 Run all checks on macOS:
 
@@ -16,19 +18,22 @@ Run all checks on macOS:
 npx skills@1.5.21 install . --list
 ```
 
-Tests must use the isolated executables in `tests/mocks`. Do not use a real
-extension token, macOS Keychain item, clipboard, or Chrome profile in automated
-tests.
+Tests must use the fake executables in `tests/mocks`. No test may touch a real
+extension token, Keychain item, clipboard, or Chrome profile. A suite that needs
+a real browser to pass is a suite nobody can trust.
 
 ## Pull requests
 
-- Explain the browser-control or security behavior being changed.
-- Add a regression test for every safeguard or bug fix.
-- Keep `SKILL.md` vendor-neutral and below 500 lines.
-- Do not add tokens, screenshots of extension connection pages, cookies,
-  browser profiles, or machine-specific paths.
-- Preserve fail-closed behavior for unsupported CLI versions and ambiguous
-  Chrome process state.
+- Say which browser-control or security behavior changes, and why.
+- Add a regression test for every safeguard and every bug fix. This one is not
+  waived.
+- Keep `SKILL.md` vendor-neutral and under 500 lines. It has to stay readable by
+  any agent, not only the one you use.
+- Do not add tokens, screenshots of extension connection pages, cookies, browser
+  profiles, or machine-specific paths.
+- Keep the fail-closed behavior for unsupported CLI versions and for unclear
+  Chrome process state. If a change touches one of those paths, explain what
+  happens on the failure branch.
 
-Security-sensitive reports belong in a private GitHub security advisory, as
-described in [SECURITY.md](SECURITY.md).
+Found something security sensitive? Do not open a pull request for it. Use a
+private GitHub security advisory, as described in [SECURITY.md](SECURITY.md).

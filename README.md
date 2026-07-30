@@ -9,10 +9,14 @@ Let your coding agent drive the Chrome you already have open and signed in.
 No new browser window. No second login. The agent works inside your real
 profile, so your cookies, your sessions, and your tabs are already there.
 
-This is an [Agent Skill](https://agentskills.io/). It wraps the official
+Most browser automation launches its own Chrome, which lands the agent on a
+login page for a site you are already signed in to. This skill uses the browser
+that is already on your screen.
+
+It is an [Agent Skill](https://agentskills.io/) that wraps the official
 Playwright CLI and the official Playwright Extension. If your Chrome is not
-running, the skill stops and tells you. It never starts a different browser
-instead.
+running, it stops and tells you. It never quietly swaps in a different browser,
+which is the failure it exists to prevent.
 
 **macOS and Google Chrome only.** See [Requirements](#requirements).
 
@@ -25,10 +29,11 @@ instead.
 
 Ask your agent something like:
 
-> Open my Jira board in my Chrome and tell me which tickets are assigned to me.
+> Open my analytics dashboard in my Chrome and tell me which pages lost traffic
+> this week.
 
 The agent connects to the Chrome window that is already open, works in a new
-tab, and reads the board. Nobody has to log in again.
+tab, and reads the dashboard. Nobody has to log in again.
 
 To let the agent work on a tab you already have open, drag that tab into the
 green Playwright tab group in Chrome. Tabs outside that group stay private and
@@ -97,7 +102,10 @@ Never paste the token into a chat or a terminal command. The setup script
 checks it without printing it, saves it in the macOS Keychain, and clears the
 clipboard when it succeeds.
 
-## What the skill blocks
+## What it refuses to do
+
+This skill holds a real token and drives a browser you are signed in to, so it
+fails closed instead of guessing:
 
 - Chrome has to be running already. The skill never opens Chrome for you.
 - Exactly one normal Chrome process may be running. The skill compares the full
@@ -167,10 +175,11 @@ profile. Read [CONTRIBUTING.md](CONTRIBUTING.md) first.
 Read [SECURITY.md](SECURITY.md) before you install. Report vulnerabilities
 privately through GitHub's security advisory workflow, not in a public issue.
 
-One thing to know: while a session is attached, the Playwright CLI daemon keeps
-the extension token in its environment. Any process running as the same macOS
-user may be able to read it. So disconnect when you are done, and use a
-separate Chrome profile for anything risky.
+One limit worth knowing up front: while a session is attached, the Playwright
+CLI daemon keeps the extension token in its environment. Any process running as
+the same macOS user may be able to read it. That is upstream behavior, not
+something this wrapper adds, and it cannot be fixed here. Disconnect when you
+are done, and use a separate Chrome profile for anything risky.
 
 ## License
 

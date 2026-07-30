@@ -1,144 +1,179 @@
-# Open-source release implementation notes
+# Implementation notes
 
-## Goal
+The decisions behind this project, the options that were turned down, and how
+each release was verified.
 
-Publish `playwright-my-chrome` as a vendor-neutral Agent Skill that can be
-installed through the Vercel Skills CLI and used by Codex, Claude Code, or any
-other compatible agent running in the same macOS desktop session as Chrome.
+## Purpose
+
+Let a coding agent drive a Chrome that is already open and signed in. Not a
+fresh browser, not a headless one. The real profile with its existing sessions.
+
+`playwright-my-chrome` is a vendor-neutral Agent Skill. It installs through the
+Vercel Skills CLI and runs under Codex, Claude Code, or any other agent running
+in the same macOS desktop session as Chrome.
 
 ## Decisions
 
-- Use the Agent Skills `skills/<name>/SKILL.md` layout. The core instructions
-  and runtime scripts do not depend on an agent vendor.
-- Keep `agents/openai.yaml` optional. It provides UI metadata only and does not
-  affect runtime behavior.
-- Use `npx skills install` as the primary public command, while retaining
-  compatibility with its `add` alias.
-- Pin `@playwright/cli` to 0.1.17. Browser operations fail closed for every
-  other version because the attachment and daemon behavior is security
-  sensitive.
+### Layout and portability
+
+- Use the Agent Skills `skills/<name>/SKILL.md` layout. The instructions and the
+  runtime scripts depend on no agent vendor, so the project is not tied to one
+  host.
+- Keep `agents/openai.yaml` optional. It carries UI metadata only, and nothing
+  at runtime reads it.
+- Make `npx skills install` the public command, and keep the `add` alias working
+  so both spellings behave the same.
+- Put the MIT notice inside the skill directory as well as the repository root.
+  Skill installers copy only that directory, so a license at the root alone
+  would never reach an installed copy.
+
+### Safety, because the wrapper holds a real token
+
+- Pin `@playwright/cli` to 0.1.17. Browser commands fail closed on every other
+  version. Attachment and daemon behavior are security sensitive, and a future
+  release may not keep the same guarantees.
 - Store the extension token in macOS Keychain and never accept it as a command
-  argument. Token setup reads the clipboard and clears it after storage.
-- Reuse one private `mychrome` session across compatible agents for the same
-  logged-in desktop user.
-- Require exactly one normal Chrome main process and compare the complete PID
-  set before and after attachment.
-- Bound attachment to 60 seconds and use targeted process cleanup, named-session
-  detachment, private artifact removal, and token-rotation guidance on timeout.
-- Treat the Playwright CLI daemon's inherited token environment as a disclosed
-  upstream residual risk. Disconnecting limits the exposure window.
-- Put the MIT notice inside the installable skill directory as well as the
-  repository root because skill installers copy only that directory.
-- Lock development dependencies with npm and avoid mutable package installation
-  in CI. The Ubuntu runner's bundled ShellCheck performs static analysis, while
-  macOS runs behavioral and installation tests.
+  argument. Setup reads the clipboard and clears it afterwards.
+- Require exactly one normal Chrome main process, and compare the complete PID
+  set immediately before and after attachment. Detach if it changed.
+- Bound attachment to 60 seconds. On timeout, kill the exact child that was
+  started, attempt a named-session detach, remove the private artifacts, and
+  require token rotation.
+- Reuse one private `mychrome` session across agents for the same desktop user,
+  so two agents do not fight over the extension connection.
 
-## Alternatives rejected
+### Disclosed rather than papered over
 
-- Chrome DevTools Protocol was rejected because it requires a separately
-  launched debugging browser and does not meet the active-profile requirement.
-- Browser APIs and vendor connectors were rejected because the user explicitly
-  requires Playwright through the existing signed-in Chrome UI.
-- AppleScript and machine-wide Chrome process control were rejected because
-  they bypass Playwright and can affect unrelated browser instances.
-- Printing and redacting failed attachment logs was rejected because putting
-  the live token in a redaction process argument still exposes it through
-  process inspection.
-- Homebrew installation in CI was rejected because it executes mutable remote
-  content during the build.
+The Playwright CLI daemon inherits the token-bearing environment for as long as
+the session is attached. That is upstream behavior this project cannot remove.
+It is documented in `SECURITY.md` as a residual risk, and `disconnect` is the
+supported way to shorten the exposure window.
 
-## Corrections incorporated
+### CI
 
-- Require explicit maintainer approval for the final commit message.
-- Do not use the `generate-pr` skill and do not create a pull request.
-- Keep the public skill agent-agnostic and compliant with the Agent Skills
-  standard.
-- Keep recovery armed until post-attach PID checks, process-token checks,
-  helper-tab validation, and private-output sanitation all complete.
-- On interruption during attach or post-attach validation, terminate the
-  tracked CLI child, unset the token environment, attempt token-free named
-  detachment, and remove the private bootstrap artifacts.
+Development dependencies are locked, and no mutable package install runs in CI.
+The Ubuntu runner uses its own bundled ShellCheck for static analysis. macOS
+runs the behavior and installation tests.
 
-## Verification record
+## What was turned down
 
-Completed locally on macOS:
+- **Chrome DevTools Protocol.** It needs a separately launched debugging
+  browser, which defeats the point of using an already signed-in profile.
+- **Browser APIs and vendor connectors.** The requirement was Playwright driving
+  the real rendered Chrome UI, not a service reaching the site another way.
+- **AppleScript and machine-wide Chrome process control.** Both bypass
+  Playwright and can affect browser instances unrelated to the task.
+- **Printing failed attachment logs and redacting them afterwards.** Passing a
+  live token to a redaction process still exposes it to anyone who can list
+  process arguments. Capturing and scrubbing without printing is the only
+  version that holds.
+- **Homebrew in CI.** It runs mutable remote content during the build. For a
+  project whose job is guarding a credential, that is the wrong trade.
 
-- `npm run verify`: passed ShellCheck, project validation, and all 21 behavior
-  tests under Bash 3.2.
+## Corrections made during development
+
+- An early cut was shaped around one agent host. That was pulled back out to
+  keep the skill agent-agnostic and compliant with the Agent Skills standard, so
+  it does not rot when the host changes.
+- Recovery was disarming too early. It now stays armed until the post-attach PID
+  checks, the process-token check, helper-tab validation, and private-output
+  sanitation have all finished.
+- Interrupt handling was added for both attach and post-attach validation. On
+  interrupt the wrapper terminates the tracked CLI child, unsets the token
+  environment, attempts a token-free named detach, and deletes the private
+  bootstrap artifacts.
+
+## First release verification
+
+All on macOS:
+
+- `npm run verify`: ShellCheck, project validation, and all 21 behavior tests
+  under Bash 3.2.
 - Agent Skill quick validation: passed.
 - Strict skill security scan: 0 findings across 7 files and 2 scripts.
-- Workflow and optional host-metadata YAML parsing: passed.
+- Workflow and host-metadata YAML parsing: passed.
 - Locked dependency audit: 0 vulnerabilities.
 - Real `@playwright/cli` 0.1.17 `doctor` smoke test: passed.
-- Vercel Skills 1.5.21 discovery and copy installation: passed for Codex,
-  Claude Code, the universal target, and the wildcard all-agent target.
-- Installed copies retained the MIT license and executable script modes.
+- Vercel Skills 1.5.21 discovery and copy installation: passed for Codex, Claude
+  Code, the universal target, and the wildcard all-agent target.
+- Installed copies kept the MIT license and the executable script modes.
 - Independent shell, installation, and security reviews: publish PASS with no
   remaining blockers.
-- Interruption coverage includes both a token-bearing attach child and a
-  successful attachment paused in post-attach tab validation. Both tests
-  verify token-free detachment and artifact cleanup.
+- Interruption coverage runs against a token-bearing attach child and against a
+  successful attachment paused in post-attach tab validation. Both tests check
+  token-free detachment and artifact cleanup.
 
-Public GitHub installation, repository security settings, hosted CI, and the
-release tag remain post-push verification steps.
+Public installation, repository security settings, hosted CI, and the release
+tag were left as post-push steps.
 
-## 2026-07-30: rename and README rewrite
+## 2026-07-30: rename and documentation rewrite
 
 ### Rename
 
-Renamed the project from `playwright-active-chrome` to `playwright-my-chrome`.
-The word "active" was the weakest part of the old name. Many readers, and
-especially non-native English readers, read "active" as "the tab in front"
-rather than "the browser you already have open". "My" states the point with no
-ambiguity.
+The project was renamed from `playwright-active-chrome` to
+`playwright-my-chrome`.
 
-The rename covers every identifier, not only the repository name, because a
-half-renamed project reads as a mistake:
+"Active" was the weakest word in the old name. Most readers, and especially
+non-native English readers, take "active" to mean "the tab in front" rather than
+"the browser already open". "My" carries the intended meaning with no second
+reading.
 
-- skill directory and skill `name`
-- wrapper script, from `playwright-cli-active.sh` to `playwright-my-chrome.sh`
-- environment variable prefix, from `PLAYWRIGHT_ACTIVE_CHROME_` to
+Every identifier moved, not only the repository name. A half-renamed project
+reads as a mistake:
+
+- the skill directory and the skill `name`
+- the wrapper script, from `playwright-cli-active.sh` to
+  `playwright-my-chrome.sh`
+- the environment variable prefix, from `PLAYWRIGHT_ACTIVE_CHROME_` to
   `PLAYWRIGHT_MY_CHROME_`
-- shared session name, from `activechrome` to `mychrome`
-- Keychain service, from `playwright-active-chrome.extension-token` to
-  `playwright-my-chrome.extension-token`
-- default runtime directory, from
-  `$HOME/Library/Caches/playwright-active-chrome` to
-  `$HOME/Library/Caches/playwright-my-chrome`
-- runtime claim marker, to `playwright-my-chrome-runtime-v1`
-
-The Keychain service and runtime directory carry state, so an existing install
-does not migrate itself. Move the stored token with
-`store-extension-token.sh --migrate-from-service`, then delete the old cache
-directory. The rename happened a few hours after the first publish, when nobody
-had installed the old name yet, so no compatibility shim was added.
+- the shared session, from `activechrome` to `mychrome`
+- the Keychain service, to `playwright-my-chrome.extension-token`
+- the default runtime directory, to `$HOME/Library/Caches/playwright-my-chrome`
+- the runtime claim marker, to `playwright-my-chrome-runtime-v1`
 
 Internal messages that used "active Chrome" as plain English were reworded too,
-so the word does not come back through the error output.
+so the word does not return through the error output.
 
-### README rewrite
+The Keychain service and the runtime directory hold state, so an existing
+install does not migrate itself. Move the stored token with
+`store-extension-token.sh --migrate-from-service`, then delete the old cache
+directory.
 
-Rewritten for clarity and for non-native English readers:
+No compatibility shim was added. The rename landed a few hours after the first
+publish, before anyone had installed the old name, so there was nothing to stay
+compatible with. Deferring it would have cost a permanent redirect and a
+deprecation note, and kept the weaker name.
 
-- The macOS and Chrome requirement moved from the middle of the page to the
-  intro. It decides whether the reader can use the project at all.
-- Added "What it looks like" with a real prompt. The old README never showed
-  what using the skill feels like.
-- Documented the green Playwright tab group. That instruction only existed in
+### Documentation
+
+The old README served a reader who had already decided to use the project, not
+one still deciding.
+
+What changed and why:
+
+- The macOS and Chrome requirement moved to the top. It decides whether the
+  reader can use the project at all, and it was sitting halfway down the page.
+- Added "What it looks like" with a real prompt. The old page never showed what
+  using the skill feels like.
+- Documented the green Playwright tab group. That instruction existed only in
   `SKILL.md`, and it is the first thing a new user needs.
-- Collapsed three install commands into one, with the variants in a sentence
-  after it.
-- Rewrote the safeguard list so every line starts with a subject and a verb.
-  The old list stacked abstract nouns, which is the hardest shape to read in a
+- Collapsed three install commands into one. Three variants before the reader
+  has done anything is a choice they are not ready to make.
+- Rewrote the safeguard list so every line starts with a subject and a verb. The
+  old list stacked abstract nouns, which is the hardest shape to read in a
   second language.
 - Added a Troubleshooting table built from the real `doctor` output in the
-  wrapper, not from memory. Writing it surfaced two states the docs never
-  mentioned: `chrome: ambiguous` and `session: stale`.
-- Added CI, license, and platform badges, plus a short Contributing section.
+  wrapper rather than from assumption. Writing it surfaced two states the docs
+  never mentioned: `chrome: ambiguous` and `session: stale`.
+- Added CI, license, and platform badges, and a short Contributing section.
 
-The page got longer in words. Concise means no wasted words, not fewer answers.
+The page grew in words. Concise means no wasted words, not fewer answers.
 
-### Verification
+`SECURITY.md` and `CONTRIBUTING.md` were rewritten against the same readability
+bar: short sentences, plain words, and every list item starting with a subject
+and a verb.
+
+### Rename verification
 
 - `tests/lint.sh`: passed.
 - `tests/run.sh`: 21 of 21 behavior tests passed after the rename.
@@ -149,17 +184,22 @@ The page got longer in words. Concise means no wasted words, not fewer answers.
   passed.
 - Hosted CI on the rename commit: green.
 
-The old Keychain item `playwright-active-chrome.extension-token` was left in
-place. `SKILL.md` says to delete a previous item only when the user asks, and
-deleting a credential cannot be undone. Remove it with
-`security delete-generic-password -a "$(id -un)" -s
-playwright-active-chrome.extension-token`.
-
 The stale `$HOME/Library/Caches/playwright-active-chrome` directory was scanned
-for token material, found clean, and deleted. Old-name skill installs were
-removed and replaced by one global install of the new name.
+for token material before deletion. It was clean, which confirmed the wrapper's
+scrubbing had been working. Old-name installs were removed and replaced with a
+single global install of the new name.
 
-Taking a live extension connection was not part of this change, so `connect`
-under the new session name is still unverified against real Chrome. Everything
-below that point, including the real Playwright CLI, the real Keychain, and the
-real Chrome process checks, was exercised.
+The old Keychain item `playwright-active-chrome.extension-token` was left in
+place. `SKILL.md` says to delete a previous item only on request, and deleting a
+credential cannot be undone. Remove it with:
+
+```bash
+security delete-generic-password \
+  -a "$(id -un)" \
+  -s playwright-active-chrome.extension-token
+```
+
+One gap, recorded rather than glossed over: no live extension connection was
+taken during this change, so `connect` under the new session name is still
+unproven against real Chrome. Everything beneath it was exercised, including the
+real Playwright CLI, the real Keychain, and the real Chrome process checks.
