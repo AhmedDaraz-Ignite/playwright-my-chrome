@@ -22,6 +22,22 @@ Tests must use the fake executables in `tests/mocks`. No test may touch a real
 extension token, Keychain item, clipboard, or Chrome profile. A suite that needs
 a real browser to pass is a suite nobody can trust.
 
+## Testing a change against a real browser
+
+`npx skills install` copies the skill directory. It does not link to it. An
+installed copy therefore goes stale the moment `scripts/` changes, and running
+the installed wrapper would test the old code without saying so.
+
+Reinstall before any manual check against real Chrome:
+
+```bash
+npx skills install . --skill playwright-my-chrome --global \
+  --agent codex --agent claude-code
+```
+
+Then run the wrapper from the installed path, not from this repository, so the
+check covers what a user actually gets.
+
 ## Pull requests
 
 - Say which browser-control or security behavior changes, and why.
