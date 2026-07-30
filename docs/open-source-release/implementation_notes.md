@@ -143,5 +143,23 @@ The page got longer in words. Concise means no wasted words, not fewer answers.
 - `tests/lint.sh`: passed.
 - `tests/run.sh`: 21 of 21 behavior tests passed after the rename.
 - `npx skills@1.5.21 install . --list`: found the skill under the new name.
-- `playwright-my-chrome.sh doctor` against the migrated Keychain item: token
-  reported as stored.
+- Keychain token migrated with `--migrate-from-service`. `doctor` then reported
+  `token: stored` and the new `playwright-my-chrome` workspace path.
+- `safety-audit` on the installed copy against real Chrome: all 7 safeguards
+  passed.
+- Hosted CI on the rename commit: green.
+
+The old Keychain item `playwright-active-chrome.extension-token` was left in
+place. `SKILL.md` says to delete a previous item only when the user asks, and
+deleting a credential cannot be undone. Remove it with
+`security delete-generic-password -a "$(id -un)" -s
+playwright-active-chrome.extension-token`.
+
+The stale `$HOME/Library/Caches/playwright-active-chrome` directory was scanned
+for token material, found clean, and deleted. Old-name skill installs were
+removed and replaced by one global install of the new name.
+
+Taking a live extension connection was not part of this change, so `connect`
+under the new session name is still unverified against real Chrome. Everything
+below that point, including the real Playwright CLI, the real Keychain, and the
+real Chrome process checks, was exercised.
