@@ -189,15 +189,20 @@ for token material before deletion. It was clean, which confirmed the wrapper's
 scrubbing had been working. Old-name installs were removed and replaced with a
 single global install of the new name.
 
-The old Keychain item `playwright-active-chrome.extension-token` was left in
-place. `SKILL.md` says to delete a previous item only on request, and deleting a
-credential cannot be undone. Remove it with:
+The old Keychain item `playwright-active-chrome.extension-token` was kept until
+the new one was proven, then deleted on request:
 
 ```bash
 security delete-generic-password \
   -a "$(id -un)" \
   -s playwright-active-chrome.extension-token
 ```
+
+Order matters here. `doctor` only reports whether a Keychain item exists, not
+whether it authenticates, so the old copy stayed until a live `connect` had
+succeeded on the new one. After deleting it, `connect`, `goto`, and `disconnect`
+were run again to confirm the skill still authenticates with a single stored
+credential.
 
 A live connection was then taken against real Chrome to close the last gap:
 
