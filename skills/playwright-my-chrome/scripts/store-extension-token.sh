@@ -2,24 +2,24 @@
 set -euo pipefail
 umask 077
 
-keychain_service="${PLAYWRIGHT_ACTIVE_CHROME_KEYCHAIN_SERVICE:-playwright-active-chrome.extension-token}"
-keychain_account="${PLAYWRIGHT_ACTIVE_CHROME_KEYCHAIN_ACCOUNT:-$(/usr/bin/id -un)}"
-test_mode="${PLAYWRIGHT_ACTIVE_CHROME_TEST_MODE:-0}"
+keychain_service="${PLAYWRIGHT_MY_CHROME_KEYCHAIN_SERVICE:-playwright-my-chrome.extension-token}"
+keychain_account="${PLAYWRIGHT_MY_CHROME_KEYCHAIN_ACCOUNT:-$(/usr/bin/id -un)}"
+test_mode="${PLAYWRIGHT_MY_CHROME_TEST_MODE:-0}"
 security_bin="/usr/bin/security"
 pbpaste_bin="/usr/bin/pbpaste"
 pbcopy_bin="/usr/bin/pbcopy"
 source_mode="clipboard"
 source_service=""
-source_account="${PLAYWRIGHT_ACTIVE_CHROME_MIGRATION_ACCOUNT:-$keychain_account}"
+source_account="${PLAYWRIGHT_MY_CHROME_MIGRATION_ACCOUNT:-$keychain_account}"
 clipboard_value=""
 token_value=""
 
 if [[ "$test_mode" == "1" ]]; then
-  security_bin="${PLAYWRIGHT_ACTIVE_CHROME_TEST_SECURITY_BIN:-$security_bin}"
-  pbpaste_bin="${PLAYWRIGHT_ACTIVE_CHROME_TEST_PBPASTE_BIN:-$pbpaste_bin}"
-  pbcopy_bin="${PLAYWRIGHT_ACTIVE_CHROME_TEST_PBCOPY_BIN:-$pbcopy_bin}"
+  security_bin="${PLAYWRIGHT_MY_CHROME_TEST_SECURITY_BIN:-$security_bin}"
+  pbpaste_bin="${PLAYWRIGHT_MY_CHROME_TEST_PBPASTE_BIN:-$pbpaste_bin}"
+  pbcopy_bin="${PLAYWRIGHT_MY_CHROME_TEST_PBCOPY_BIN:-$pbcopy_bin}"
 elif [[ "$test_mode" != "0" ]]; then
-  echo "ERROR: PLAYWRIGHT_ACTIVE_CHROME_TEST_MODE must be 0 or 1." >&2
+  echo "ERROR: PLAYWRIGHT_MY_CHROME_TEST_MODE must be 0 or 1." >&2
   exit 2
 fi
 
@@ -106,7 +106,7 @@ if ! printf '%s\n%s\n' "$token_value" "$token_value" |
     -U \
     -a "$keychain_account" \
     -s "$keychain_service" \
-    -l "Playwright Active Chrome Extension Token" \
+    -l "Playwright My Chrome Extension Token" \
     -w >/dev/null 2>&1; then
   die "Could not store the Playwright Extension token in macOS Keychain."
 fi

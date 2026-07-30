@@ -3,18 +3,18 @@ set -euo pipefail
 umask 077
 
 skill_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-session_name="${PLAYWRIGHT_ACTIVE_CHROME_SESSION:-activechrome}"
-keychain_service="${PLAYWRIGHT_ACTIVE_CHROME_KEYCHAIN_SERVICE:-playwright-active-chrome.extension-token}"
-keychain_account="${PLAYWRIGHT_ACTIVE_CHROME_KEYCHAIN_ACCOUNT:-$(/usr/bin/id -un)}"
-test_mode="${PLAYWRIGHT_ACTIVE_CHROME_TEST_MODE:-0}"
+session_name="${PLAYWRIGHT_MY_CHROME_SESSION:-mychrome}"
+keychain_service="${PLAYWRIGHT_MY_CHROME_KEYCHAIN_SERVICE:-playwright-my-chrome.extension-token}"
+keychain_account="${PLAYWRIGHT_MY_CHROME_KEYCHAIN_ACCOUNT:-$(/usr/bin/id -un)}"
+test_mode="${PLAYWRIGHT_MY_CHROME_TEST_MODE:-0}"
 security_bin="/usr/bin/security"
 extension_connect_url="chrome-extension://mmlmfjhmonkocbjadbfplnigmagldckm/connect.html"
-chrome_executable="${PLAYWRIGHT_ACTIVE_CHROME_EXECUTABLE:-/Applications/Google Chrome.app/Contents/MacOS/Google Chrome}"
+chrome_executable="${PLAYWRIGHT_MY_CHROME_EXECUTABLE:-/Applications/Google Chrome.app/Contents/MacOS/Google Chrome}"
 ps_bin="/bin/ps"
 supported_cli_version="0.1.17"
 attach_timeout_attempts=600
-default_runtime_dir="$HOME/Library/Caches/playwright-active-chrome"
-runtime_dir="${PLAYWRIGHT_ACTIVE_CHROME_RUNTIME_DIR:-$default_runtime_dir}"
+default_runtime_dir="$HOME/Library/Caches/playwright-my-chrome"
+runtime_dir="${PLAYWRIGHT_MY_CHROME_RUNTIME_DIR:-$default_runtime_dir}"
 while [[ "$runtime_dir" != "/" && "$runtime_dir" == */ ]]; do
   runtime_dir="${runtime_dir%/}"
 done
@@ -23,18 +23,18 @@ sanitize_marker="$runtime_dir/needs-sanitize"
 output_path_file="$runtime_dir/session-output-path"
 token_rotation_baseline_file="$runtime_dir/token-rotation-baseline.sha256"
 token_rotation_chrome_pid_file="$runtime_dir/token-rotation-chrome.pid"
-runtime_claim="$runtime_dir/.playwright-active-chrome-runtime"
+runtime_claim="$runtime_dir/.playwright-my-chrome-runtime"
 lock_held=0
 bounded_child_pid=""
 attachment_requires_recovery=0
 listed_tabs=""
 
 if [[ "$test_mode" == "1" ]]; then
-  security_bin="${PLAYWRIGHT_ACTIVE_CHROME_TEST_SECURITY_BIN:-$security_bin}"
-  ps_bin="${PLAYWRIGHT_ACTIVE_CHROME_TEST_PS_BIN:-$ps_bin}"
-  attach_timeout_attempts="${PLAYWRIGHT_ACTIVE_CHROME_TEST_ATTACH_TIMEOUT_ATTEMPTS:-$attach_timeout_attempts}"
+  security_bin="${PLAYWRIGHT_MY_CHROME_TEST_SECURITY_BIN:-$security_bin}"
+  ps_bin="${PLAYWRIGHT_MY_CHROME_TEST_PS_BIN:-$ps_bin}"
+  attach_timeout_attempts="${PLAYWRIGHT_MY_CHROME_TEST_ATTACH_TIMEOUT_ATTEMPTS:-$attach_timeout_attempts}"
 elif [[ "$test_mode" != "0" ]]; then
-  echo "ERROR: PLAYWRIGHT_ACTIVE_CHROME_TEST_MODE must be 0 or 1." >&2
+  echo "ERROR: PLAYWRIGHT_MY_CHROME_TEST_MODE must be 0 or 1." >&2
   exit 1
 fi
 die() {
@@ -44,14 +44,14 @@ die() {
 
 [[ "$attach_timeout_attempts" =~ ^[1-9][0-9]*$ ]] ||
   die "The attach timeout must be a positive number of 100ms attempts."
-[[ -n "$session_name" ]] || die "The active-Chrome session name cannot be empty."
+[[ -n "$session_name" ]] || die "The session name cannot be empty."
 [[ -n "$keychain_service" ]] || die "The Keychain service cannot be empty."
 [[ -n "$keychain_account" ]] || die "The Keychain account cannot be empty."
-[[ -n "$runtime_dir" ]] || die "The active-Chrome runtime directory cannot be empty."
+[[ -n "$runtime_dir" ]] || die "The runtime directory cannot be empty."
 [[ "$runtime_dir" == /* ]] ||
-  die "The active-Chrome runtime directory must be an absolute path."
+  die "The runtime directory must be an absolute path."
 [[ "$runtime_dir" != "/" && "$runtime_dir" != "$HOME" ]] ||
-  die "Refusing to use a broad directory as the active-Chrome runtime."
+  die "Refusing to use a broad directory as the runtime."
 [[ "$security_bin" == /* && -x "$security_bin" ]] ||
   die "The configured macOS Keychain executable is unavailable."
 [[ "$chrome_executable" == /* ]] ||
@@ -68,8 +68,8 @@ resolve_cli() {
   local candidate_dir=""
   local best=""
 
-  if [[ -n "${PLAYWRIGHT_ACTIVE_CHROME_CLI:-}" ]]; then
-    candidate="$PLAYWRIGHT_ACTIVE_CHROME_CLI"
+  if [[ -n "${PLAYWRIGHT_MY_CHROME_CLI:-}" ]]; then
+    candidate="$PLAYWRIGHT_MY_CHROME_CLI"
     [[ "$candidate" == /* ]] || {
       echo "Configured Playwright CLI path must be absolute: $candidate" >&2
       return 1
@@ -115,7 +115,7 @@ resolve_cli() {
 
 cli_bin="$(resolve_cli)" || {
   echo "Playwright CLI was not found." >&2
-  echo "Configure PLAYWRIGHT_ACTIVE_CHROME_CLI with an absolute trusted executable." >&2
+  echo "Configure PLAYWRIGHT_MY_CHROME_CLI with an absolute trusted executable." >&2
   echo "This skill never installs or upgrades the shared Playwright CLI." >&2
   exit 2
 }
@@ -125,8 +125,8 @@ resolve_node() {
   local best=""
   local candidate=""
 
-  if [[ -n "${PLAYWRIGHT_ACTIVE_CHROME_NODE:-}" ]]; then
-    candidate="$PLAYWRIGHT_ACTIVE_CHROME_NODE"
+  if [[ -n "${PLAYWRIGHT_MY_CHROME_NODE:-}" ]]; then
+    candidate="$PLAYWRIGHT_MY_CHROME_NODE"
     [[ "$candidate" == /* && -x "$candidate" ]] || return 1
     printf '%s\n' "$candidate"
     return 0
@@ -174,10 +174,10 @@ fi
 unset cli_shebang
 
 if [[ -L "$runtime_dir" ]]; then
-  die "The active-Chrome runtime cannot be a symbolic link: $runtime_dir"
+  die "The runtime cannot be a symbolic link: $runtime_dir"
 fi
 if [[ -e "$runtime_dir" && ! -d "$runtime_dir" ]]; then
-  die "The active-Chrome runtime is not a directory: $runtime_dir"
+  die "The runtime is not a directory: $runtime_dir"
 fi
 if [[ ! -d "$runtime_dir" ]] && ! /bin/mkdir -p "$runtime_dir"; then
   die "Could not create the private Playwright runtime: $runtime_dir"
@@ -188,27 +188,27 @@ fi
   die "The private Playwright runtime must have mode 0700: $runtime_dir"
 
 if [[ -L "$runtime_claim" ]]; then
-  die "The active-Chrome runtime claim cannot be a symbolic link."
+  die "The runtime claim cannot be a symbolic link."
 fi
 if [[ -e "$runtime_claim" && ! -f "$runtime_claim" ]]; then
-  die "The active-Chrome runtime claim is not a regular file."
+  die "The runtime claim is not a regular file."
 fi
 if [[ ! -f "$runtime_claim" ]]; then
   if [[ "$runtime_dir" != "$default_runtime_dir" ]] &&
     [[ -n "$(/usr/bin/find "$runtime_dir" -mindepth 1 -maxdepth 1 -print -quit)" ]]; then
     die "Refusing to claim a non-empty custom runtime directory."
   fi
-  printf '%s\n' "playwright-active-chrome-runtime-v1" >"$runtime_claim" ||
+  printf '%s\n' "playwright-my-chrome-runtime-v1" >"$runtime_claim" ||
     die "Could not claim the private Playwright runtime."
 fi
 [[ -O "$runtime_claim" ]] ||
-  die "The active-Chrome runtime claim is not owned by the current user."
+  die "The runtime claim is not owned by the current user."
 [[ "$(/usr/bin/stat -f '%Lp' "$runtime_claim")" == "600" ]] ||
-  die "The active-Chrome runtime claim must have mode 0600."
+  die "The runtime claim must have mode 0600."
 IFS= read -r runtime_claim_value <"$runtime_claim" ||
-  die "Could not read the active-Chrome runtime claim."
-[[ "$runtime_claim_value" == "playwright-active-chrome-runtime-v1" ]] ||
-  die "The active-Chrome runtime claim is invalid."
+  die "Could not read the runtime claim."
+[[ "$runtime_claim_value" == "playwright-my-chrome-runtime-v1" ]] ||
+  die "The runtime claim is invalid."
 unset runtime_claim_value
 
 if [[ -L "$runtime_dir/.playwright" ]]; then
@@ -231,9 +231,9 @@ fi
 PATH="/usr/bin:/bin:/usr/sbin:/sbin"
 export PATH
 
-# Playwright CLI keys daemon sessions by the nearest .playwright workspace.
-# The private marker above makes activechrome stable across repositories and
-# isolated from ordinary unscoped Playwright CLI invocations.
+# Playwright CLI picks its daemon session from the nearest .playwright folder.
+# The wrapper always runs inside its own private workspace folder.
+# The mychrome session then stays the same in every repository.
 run_cli() {
   (
     cd "$runtime_dir"
@@ -1164,7 +1164,7 @@ remove_lock_safely() {
 release_lock() {
   if (( lock_held == 1 )); then
     if ! remove_lock_safely; then
-      echo "WARNING: Could not safely remove the active-Chrome lock." >&2
+      echo "WARNING: Could not safely remove the lock." >&2
     fi
     lock_held=0
   fi
@@ -1177,14 +1177,14 @@ acquire_lock() {
 
   while ! mkdir "$lock_dir" 2>/dev/null; do
     if ! lock_directory_is_valid; then
-      echo "The active-Chrome lock path is not a private owned directory." >&2
+      echo "The lock path is not a private owned directory." >&2
       echo "Refusing to read or remove it." >&2
       return 1
     fi
     owner=""
     if [[ -e "$lock_dir/pid" || -L "$lock_dir/pid" ]]; then
       if ! lock_pid_file_is_valid; then
-        echo "The active-Chrome lock PID file is not a private owned regular file." >&2
+        echo "The lock PID file is not a private owned regular file." >&2
         echo "Refusing to read or remove it." >&2
         return 1
       fi
@@ -1195,7 +1195,7 @@ acquire_lock() {
       ownerless_attempts=0
       if ! kill -0 "$owner" 2>/dev/null; then
         if ! remove_lock_safely; then
-          echo "Could not safely remove a stale active-Chrome lock." >&2
+          echo "Could not safely remove a stale lock." >&2
           return 1
         fi
         continue
@@ -1204,7 +1204,7 @@ acquire_lock() {
       ownerless_attempts=$((ownerless_attempts + 1))
       if (( ownerless_attempts >= 20 )); then
         if ! remove_lock_safely; then
-          echo "Could not safely remove an ownerless active-Chrome lock." >&2
+          echo "Could not safely remove an ownerless lock." >&2
           return 1
         fi
         ownerless_attempts=0
@@ -1213,7 +1213,7 @@ acquire_lock() {
     fi
 
     if (( attempts >= 200 )); then
-      echo "Timed out waiting for another active-Chrome connection attempt." >&2
+      echo "Timed out waiting for another connection attempt." >&2
       return 1
     fi
 
@@ -1222,7 +1222,7 @@ acquire_lock() {
   done
 
   if ! lock_directory_is_valid; then
-    echo "The newly created active-Chrome lock is invalid." >&2
+    echo "The newly created lock is invalid." >&2
     return 1
   fi
   if ! printf '%s\n' "$$" >"$lock_dir/pid"; then
@@ -1395,7 +1395,7 @@ attach_session() {
       echo "Private bootstrap artifacts were removed." >&2
       echo "Complete the token-rotation procedure before reconnecting." >&2
     else
-      echo "Playwright could not attach to the active Chrome profile." >&2
+      echo "Playwright could not attach to your existing Chrome profile." >&2
       echo "Bootstrap details were suppressed because they may contain the extension token." >&2
       if (( detach_status != 0 )); then
         echo "Complete the token-rotation procedure before reconnecting." >&2
@@ -1433,7 +1433,7 @@ attach_session() {
   fi
 
   if ! list_tabs_guarded "$tabs_output"; then
-    echo "Playwright attached, but the active Chrome session did not become ready." >&2
+    echo "Playwright attached, but the Chrome session did not become ready." >&2
     return 1
   fi
   tabs="$listed_tabs"
@@ -1459,7 +1459,7 @@ ensure_session() {
   case "$state" in
     ready)
       if ! tabs="$(list_tabs)"; then
-        echo "The active Chrome session could not be probed after three attempts." >&2
+        echo "The Chrome session could not be probed after three attempts." >&2
         echo "No reconnect was attempted; run 'doctor' and retry." >&2
         release_lock
         return 1
@@ -1473,10 +1473,10 @@ ensure_session() {
       ;;
     missing)
       if [[ "$allow_attach" != "true" ]]; then
-        echo "No Playwright Active Chrome session is currently owned by this skill." >&2
+        echo "No Playwright My Chrome session is currently owned by this skill." >&2
         echo "No attachment was attempted, so another extension client remains untouched." >&2
         echo "After explicit approval to take the exclusive Playwright Extension connection, run:" >&2
-        echo "  $skill_dir/scripts/playwright-cli-active.sh connect" >&2
+        echo "  $skill_dir/scripts/playwright-my-chrome.sh connect" >&2
         release_lock
         return 4
       fi
@@ -1490,10 +1490,10 @@ ensure_session() {
       ;;
     stale)
       if [[ "$allow_attach" != "true" ]]; then
-        echo "The owned Playwright Active Chrome session is stale." >&2
+        echo "The owned Playwright My Chrome session is stale." >&2
         echo "No replacement was attempted, so another extension client remains untouched." >&2
         echo "After explicit approval to take the exclusive Playwright Extension connection, run:" >&2
-        echo "  $skill_dir/scripts/playwright-cli-active.sh connect" >&2
+        echo "  $skill_dir/scripts/playwright-my-chrome.sh connect" >&2
         release_lock
         return 4
       fi
@@ -1520,7 +1520,7 @@ ensure_session() {
 
   release_lock
   if [[ "$quiet" != "true" ]]; then
-    echo "Playwright Active Chrome is ready ($result session '$session_name')."
+    echo "Playwright My Chrome is ready ($result session '$session_name')."
   fi
 }
 
@@ -1579,7 +1579,7 @@ doctor() {
   process_token_state="$(persistent_extension_token_state)"
   rotation="$(rotation_metadata_state)"
 
-  echo "Playwright Active Chrome"
+  echo "Playwright My Chrome"
   echo "cli:       $cli_bin"
   echo "version:   $version"
   echo "compatibility: $compatibility (requires $supported_cli_version)"
@@ -1655,7 +1655,7 @@ safety_audit() {
   fi
   process_token_state="$(persistent_extension_token_state)"
 
-  echo "Playwright Active Chrome safeguards"
+  echo "Playwright My Chrome safeguards"
   if (( chrome_count == 1 )); then
     echo "1. running-Chrome preflight: PASS (normal Chrome pid $chrome_pid)"
   elif (( chrome_count > 1 )); then
@@ -1822,10 +1822,10 @@ case "$command_name" in
     disconnect_session
     ;;
   open)
-    die "'open' would replace active Chrome. Use 'goto <url>' instead."
+    die "'open' would replace your existing Chrome. Use 'goto <url>' instead."
     ;;
   close-all|kill-all|delete-data|install|install-browser|show)
-    die "'$command_name' is outside this active-Chrome wrapper's safe scope."
+    die "'$command_name' is outside this wrapper's safe scope."
     ;;
   list)
     require_supported_cli

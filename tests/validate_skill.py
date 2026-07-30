@@ -11,9 +11,9 @@ def fail(message: str) -> None:
 
 
 repo_root = Path(__file__).resolve().parents[1]
-skill_dir = repo_root / "skills" / "playwright-active-chrome"
+skill_dir = repo_root / "skills" / "playwright-my-chrome"
 skill_file = skill_dir / "SKILL.md"
-wrapper_file = skill_dir / "scripts" / "playwright-cli-active.sh"
+wrapper_file = skill_dir / "scripts" / "playwright-my-chrome.sh"
 root_license = repo_root / "LICENSE"
 skill_license = skill_dir / "LICENSE"
 macos_home_prefix = "/" + "Users" + "/"

@@ -2,7 +2,7 @@
 
 ## Goal
 
-Publish `playwright-active-chrome` as a vendor-neutral Agent Skill that can be
+Publish `playwright-my-chrome` as a vendor-neutral Agent Skill that can be
 installed through the Vercel Skills CLI and used by Codex, Claude Code, or any
 other compatible agent running in the same macOS desktop session as Chrome.
 
@@ -19,7 +19,7 @@ other compatible agent running in the same macOS desktop session as Chrome.
   sensitive.
 - Store the extension token in macOS Keychain and never accept it as a command
   argument. Token setup reads the clipboard and clears it after storage.
-- Reuse one private `activechrome` session across compatible agents for the same
+- Reuse one private `mychrome` session across compatible agents for the same
   logged-in desktop user.
 - Require exactly one normal Chrome main process and compare the complete PID
   set before and after attachment.
@@ -81,3 +81,67 @@ Completed locally on macOS:
 
 Public GitHub installation, repository security settings, hosted CI, and the
 release tag remain post-push verification steps.
+
+## 2026-07-30: rename and README rewrite
+
+### Rename
+
+Renamed the project from `playwright-active-chrome` to `playwright-my-chrome`.
+The word "active" was the weakest part of the old name. Many readers, and
+especially non-native English readers, read "active" as "the tab in front"
+rather than "the browser you already have open". "My" states the point with no
+ambiguity.
+
+The rename covers every identifier, not only the repository name, because a
+half-renamed project reads as a mistake:
+
+- skill directory and skill `name`
+- wrapper script, from `playwright-cli-active.sh` to `playwright-my-chrome.sh`
+- environment variable prefix, from `PLAYWRIGHT_ACTIVE_CHROME_` to
+  `PLAYWRIGHT_MY_CHROME_`
+- shared session name, from `activechrome` to `mychrome`
+- Keychain service, from `playwright-active-chrome.extension-token` to
+  `playwright-my-chrome.extension-token`
+- default runtime directory, from
+  `$HOME/Library/Caches/playwright-active-chrome` to
+  `$HOME/Library/Caches/playwright-my-chrome`
+- runtime claim marker, to `playwright-my-chrome-runtime-v1`
+
+The Keychain service and runtime directory carry state, so an existing install
+does not migrate itself. Move the stored token with
+`store-extension-token.sh --migrate-from-service`, then delete the old cache
+directory. The rename happened a few hours after the first publish, when nobody
+had installed the old name yet, so no compatibility shim was added.
+
+Internal messages that used "active Chrome" as plain English were reworded too,
+so the word does not come back through the error output.
+
+### README rewrite
+
+Rewritten for clarity and for non-native English readers:
+
+- The macOS and Chrome requirement moved from the middle of the page to the
+  intro. It decides whether the reader can use the project at all.
+- Added "What it looks like" with a real prompt. The old README never showed
+  what using the skill feels like.
+- Documented the green Playwright tab group. That instruction only existed in
+  `SKILL.md`, and it is the first thing a new user needs.
+- Collapsed three install commands into one, with the variants in a sentence
+  after it.
+- Rewrote the safeguard list so every line starts with a subject and a verb.
+  The old list stacked abstract nouns, which is the hardest shape to read in a
+  second language.
+- Added a Troubleshooting table built from the real `doctor` output in the
+  wrapper, not from memory. Writing it surfaced two states the docs never
+  mentioned: `chrome: ambiguous` and `session: stale`.
+- Added CI, license, and platform badges, plus a short Contributing section.
+
+The page got longer in words. Concise means no wasted words, not fewer answers.
+
+### Verification
+
+- `tests/lint.sh`: passed.
+- `tests/run.sh`: 21 of 21 behavior tests passed after the rename.
+- `npx skills@1.5.21 install . --list`: found the skill under the new name.
+- `playwright-my-chrome.sh doctor` against the migrated Keychain item: token
+  reported as stored.

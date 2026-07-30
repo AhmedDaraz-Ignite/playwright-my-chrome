@@ -1,8 +1,8 @@
 {
-  "name": "playwright-active-chrome-skill",
+  "name": "playwright-my-chrome-skill",
   "version": "1.0.0",
   "private": true,
-  "description": "Development commands for the Playwright Active Chrome Agent Skill",
+  "description": "Development commands for the Playwright My Chrome Agent Skill",
   "license": "MIT",
   "engines": {
     "node": ">=22.20.0"

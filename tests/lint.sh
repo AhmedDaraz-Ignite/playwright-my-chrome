@@ -2,7 +2,7 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-skill_dir="$repo_root/skills/playwright-active-chrome"
+skill_dir="$repo_root/skills/playwright-my-chrome"
 
 command -v shellcheck >/dev/null 2>&1 || {
   echo "ERROR: shellcheck is required." >&2

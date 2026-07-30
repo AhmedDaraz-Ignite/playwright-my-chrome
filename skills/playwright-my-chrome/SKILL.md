@@ -1,9 +1,9 @@
 ---
-name: playwright-active-chrome
-description: Control the user's already-running, logged-in Google Chrome through Playwright CLI and the official Playwright Extension. Use when the user explicitly asks to use Playwright with their active, current, existing, or signed-in Chrome session; asks to inspect or operate a website through that rendered browser UI; or forbids APIs, browser connectors, or a newly launched browser. Reuse the shared activechrome session and never silently substitute an API, connector, AppleScript, or another browser.
+name: playwright-my-chrome
+description: Control the user's already-running, logged-in Google Chrome through Playwright CLI and the official Playwright Extension. Use when the user explicitly asks to use Playwright with their active, current, existing, or signed-in Chrome session; asks to inspect or operate a website through that rendered browser UI; or forbids APIs, browser connectors, or a newly launched browser. Reuse the shared mychrome session and never silently substitute an API, connector, AppleScript, or another browser.
 ---
 
-# Playwright Active Chrome
+# Playwright My Chrome
 
 Use the official Playwright Extension through this skill's wrapper. Preserve the
 user's existing Chrome profile, cookies, logins, and tabs.
@@ -30,7 +30,7 @@ instructions and scripts do not depend on it.
 Use this wrapper for every command:
 
 ```bash
-"$SKILL_ROOT/scripts/playwright-cli-active.sh"
+"$SKILL_ROOT/scripts/playwright-my-chrome.sh"
 ```
 
 Substitute the resolved absolute skill directory before invoking it. Do not
@@ -38,7 +38,7 @@ pass an unset literal `SKILL_ROOT` to the shell.
 
 The wrapper:
 
-- uses one `activechrome` daemon session across agents and repositories for the
+- uses one `mychrome` daemon session across agents and repositories for the
   same local desktop user;
 - isolates that session in a private, agent-host-neutral `.playwright`
   workspace;
@@ -64,20 +64,20 @@ The wrapper:
 
 Default shared state:
 
-- session: `activechrome`
-- runtime: `$HOME/Library/Caches/playwright-active-chrome`
-- Keychain service: `playwright-active-chrome.extension-token`
+- session: `mychrome`
+- runtime: `$HOME/Library/Caches/playwright-my-chrome`
+- Keychain service: `playwright-my-chrome.extension-token`
 - Keychain account: the current macOS username
 
 These environment variables provide configuration overrides:
 
-- `PLAYWRIGHT_ACTIVE_CHROME_CLI`
-- `PLAYWRIGHT_ACTIVE_CHROME_NODE`
-- `PLAYWRIGHT_ACTIVE_CHROME_RUNTIME_DIR`
-- `PLAYWRIGHT_ACTIVE_CHROME_SESSION`
-- `PLAYWRIGHT_ACTIVE_CHROME_KEYCHAIN_SERVICE`
-- `PLAYWRIGHT_ACTIVE_CHROME_KEYCHAIN_ACCOUNT`
-- `PLAYWRIGHT_ACTIVE_CHROME_EXECUTABLE`
+- `PLAYWRIGHT_MY_CHROME_CLI`
+- `PLAYWRIGHT_MY_CHROME_NODE`
+- `PLAYWRIGHT_MY_CHROME_RUNTIME_DIR`
+- `PLAYWRIGHT_MY_CHROME_SESSION`
+- `PLAYWRIGHT_MY_CHROME_KEYCHAIN_SERVICE`
+- `PLAYWRIGHT_MY_CHROME_KEYCHAIN_ACCOUNT`
+- `PLAYWRIGHT_MY_CHROME_EXECUTABLE`
 
 CLI and Node overrides must be absolute paths to trusted, compatible
 executables. Without overrides, the wrapper checks only standard absolute
@@ -96,7 +96,7 @@ approved fresh connection must use the same Keychain service and account.
 When `doctor` reports `session: ready`, call the desired command directly:
 
 ```bash
-"$SKILL_ROOT/scripts/playwright-cli-active.sh" tab-list
+"$SKILL_ROOT/scripts/playwright-my-chrome.sh" tab-list
 ```
 
 An explicitly approved `connect` after Chrome, the extension, or the Playwright
@@ -155,7 +155,7 @@ separately if the user requests it.
 Check readiness without displaying or retrieving the token:
 
 ```bash
-"$SKILL_ROOT/scripts/playwright-cli-active.sh" doctor
+"$SKILL_ROOT/scripts/playwright-my-chrome.sh" doctor
 ```
 
 `token: stored` means an explicitly approved `connect` can authenticate without
@@ -167,13 +167,13 @@ the wrapper will refuse to attach until the user opens Chrome.
 Verify all enforced safeguards:
 
 ```bash
-"$SKILL_ROOT/scripts/playwright-cli-active.sh" safety-audit
+"$SKILL_ROOT/scripts/playwright-my-chrome.sh" safety-audit
 ```
 
 ## Normal workflow
 
-The wrapper selects `activechrome` automatically. Do not add
-`-s=activechrome` unless compatibility with an existing command requires it.
+The wrapper selects `mychrome` automatically. Do not add
+`-s=mychrome` unless compatibility with an existing command requires it.
 
 The Playwright Extension permits only one active client, and a connection owned
 by another tool is not necessarily visible in this wrapper's session registry.
@@ -183,7 +183,7 @@ connection. Honor approval already present in the current task; do not ask for
 it twice. Then run:
 
 ```bash
-"$SKILL_ROOT/scripts/playwright-cli-active.sh" connect
+"$SKILL_ROOT/scripts/playwright-my-chrome.sh" connect
 ```
 
 `connect` must fail without opening a browser unless exactly one normal Chrome
@@ -202,19 +202,19 @@ To operate an already-open tab, ask the user to drag that tab into the green
 Playwright tab group in Chrome, then list the tabs exposed by the extension:
 
 ```bash
-"$SKILL_ROOT/scripts/playwright-cli-active.sh" tab-list
+"$SKILL_ROOT/scripts/playwright-my-chrome.sh" tab-list
 ```
 
 Navigate the controlled tab:
 
 ```bash
-"$SKILL_ROOT/scripts/playwright-cli-active.sh" goto "https://example.com"
+"$SKILL_ROOT/scripts/playwright-my-chrome.sh" goto "https://example.com"
 ```
 
 Create another controlled tab:
 
 ```bash
-"$SKILL_ROOT/scripts/playwright-cli-active.sh" tab-new "https://example.com"
+"$SKILL_ROOT/scripts/playwright-my-chrome.sh" tab-new "https://example.com"
 ```
 
 Use `goto` when a separate tab is unnecessary. Use snapshots, `find`, locators,
@@ -228,7 +228,7 @@ Keep the session attached between related tasks. Disconnect only when the user
 asks, or when troubleshooting requires a clean attachment:
 
 ```bash
-"$SKILL_ROOT/scripts/playwright-cli-active.sh" disconnect
+"$SKILL_ROOT/scripts/playwright-my-chrome.sh" disconnect
 ```
 
 `disconnect` maps to Playwright CLI `detach`, verifies that normal Chrome
@@ -240,13 +240,13 @@ when minimizing token exposure is more important than session reuse.
 Run `doctor` only for setup or connection failures, not before every task:
 
 ```bash
-"$SKILL_ROOT/scripts/playwright-cli-active.sh" doctor
+"$SKILL_ROOT/scripts/playwright-my-chrome.sh" doctor
 ```
 
 Inspect active Playwright sessions before cleanup:
 
 ```bash
-"$SKILL_ROOT/scripts/playwright-cli-active.sh" cleanup-plan
+"$SKILL_ROOT/scripts/playwright-my-chrome.sh" cleanup-plan
 ```
 
 Close only a named, non-attached Playwright browser from its owning workspace
@@ -258,7 +258,7 @@ machine-wide Chrome kill.
 Check an existing owned session without taking a new connection:
 
 ```bash
-"$SKILL_ROOT/scripts/playwright-cli-active.sh" ensure
+"$SKILL_ROOT/scripts/playwright-my-chrome.sh" ensure
 ```
 
 `ensure` fails closed when the session is missing or stale. Only `connect`
@@ -309,8 +309,8 @@ that fallback.
 
 ```bash
 security delete-generic-password \
-  -a "${PLAYWRIGHT_ACTIVE_CHROME_KEYCHAIN_ACCOUNT:-$(id -un)}" \
-  -s "${PLAYWRIGHT_ACTIVE_CHROME_KEYCHAIN_SERVICE:-playwright-active-chrome.extension-token}"
+  -a "${PLAYWRIGHT_MY_CHROME_KEYCHAIN_ACCOUNT:-$(id -un)}" \
+  -s "${PLAYWRIGHT_MY_CHROME_KEYCHAIN_SERVICE:-playwright-my-chrome.extension-token}"
 ```
 
 If `doctor` reports `process-token: exposed`, complete all of these steps:
@@ -320,7 +320,7 @@ If `doctor` reports `process-token: exposed`, complete all of these steps:
 3. While Chrome is closed, record a private, hash-only comparison baseline:
 
    ```bash
-   "$SKILL_ROOT/scripts/playwright-cli-active.sh" begin-token-rotation
+   "$SKILL_ROOT/scripts/playwright-my-chrome.sh" begin-token-rotation
    ```
 
 4. Reopen Chrome manually and regenerate the token from the extension icon.
@@ -329,7 +329,7 @@ If `doctor` reports `process-token: exposed`, complete all of these steps:
 6. Mark the current Chrome process as the one in which regeneration occurred:
 
    ```bash
-   "$SKILL_ROOT/scripts/playwright-cli-active.sh" mark-token-regenerated
+   "$SKILL_ROOT/scripts/playwright-my-chrome.sh" mark-token-regenerated
    ```
 
 7. Fully quit and manually reopen Chrome again. This post-regeneration restart
@@ -338,7 +338,7 @@ If `doctor` reports `process-token: exposed`, complete all of these steps:
    either token:
 
    ```bash
-   "$SKILL_ROOT/scripts/playwright-cli-active.sh" rotation-status
+   "$SKILL_ROOT/scripts/playwright-my-chrome.sh" rotation-status
    ```
 
 9. Require `rotation: VERIFIED`, `token: stored`, and
