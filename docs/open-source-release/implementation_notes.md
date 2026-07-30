@@ -199,7 +199,13 @@ security delete-generic-password \
   -s playwright-active-chrome.extension-token
 ```
 
-One gap, recorded rather than glossed over: no live extension connection was
-taken during this change, so `connect` under the new session name is still
-unproven against real Chrome. Everything beneath it was exercised, including the
-real Playwright CLI, the real Keychain, and the real Chrome process checks.
+A live connection was then taken against real Chrome to close the last gap:
+
+- `connect` reported ready on the renamed `mychrome` session.
+- `doctor` reported `session: ready` and `process-token: absent`, so the token
+  did not reach the Chrome command line during a real attachment.
+- `tab-list` returned the extension helper tab and the clean controlled tab,
+  with the helper's authentication query redacted in the forwarded output.
+- `goto https://example.com` loaded the page and returned its title, which
+  proves the session actually drives the browser.
+- `disconnect` detached and left Chrome running on the same PID it started on.
