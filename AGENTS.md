@@ -10,6 +10,11 @@ drive the Chrome the user already has open and signed in. Everything shipped to
 users lives in that directory; the repository root only holds docs, tests, and
 CI. macOS and Google Chrome only.
 
+## Commit and push
+
+Never commit or push to the `main` branch. Work on a branch and open a pull
+request.
+
 ## Commands
 
 ```bash
