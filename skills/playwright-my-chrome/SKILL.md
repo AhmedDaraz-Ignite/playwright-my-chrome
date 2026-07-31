@@ -33,8 +33,8 @@ Use this wrapper for every command:
 "$SKILL_ROOT/scripts/playwright-my-chrome.sh"
 ```
 
-Substitute the resolved absolute skill directory before invoking it. Do not
-pass an unset literal `SKILL_ROOT` to the shell.
+Resolve `SKILL_ROOT` to its absolute path before invoking the wrapper. Do not
+pass an unset or literal `SKILL_ROOT` variable to the shell.
 
 The wrapper:
 
@@ -44,7 +44,7 @@ The wrapper:
   workspace;
 - invokes an already-installed Playwright CLI without patching, installing, or
   reconfiguring the shared executable;
-- proves that normal user Chrome is already running before every fresh
+- confirms that normal user Chrome is already running before every fresh
   attachment and refuses to launch Chrome itself;
 - requires exactly one normal Chrome main process, verifies that the complete
   PID set survives attachment, and fails closed if it changes or retains the
@@ -85,7 +85,7 @@ NVM, Volta, Homebrew, and `/usr/local` locations; it never selects a
 token-bearing CLI through caller-controlled `PATH`. A runtime override must
 also be absolute and point to a dedicated, non-symlink directory owned by the
 desktop user. The wrapper creates new runtime directories privately and
-refuses to claim a non-empty unrelated directory or change its permissions.
+refuses to claim a non-empty unrelated directory or modify its permissions.
 The Chrome executable override is only for another trusted Chrome installation
 such as Chrome Canary. The default is standard macOS Google Chrome.
 
@@ -100,14 +100,14 @@ When `doctor` reports `session: ready`, call the desired command directly:
 ```
 
 An explicitly approved `connect` after Chrome, the extension, or the Playwright
-daemon restarts may briefly flash the extension's `connect.html` page. This is
+daemon restarts may briefly display the extension's `connect.html` page. This is
 the official extension handshake, not user content. The CLI opens it
 unconditionally on a fresh extension attachment. Do not inspect it, report it
 as the requested page, or repeatedly reconnect because it appeared.
 
 The wrapper creates a controlled blank tab, verifies that it is attached, and
 parks the helper in the background. The helper must remain open because it owns
-the extension heartbeat. Navigating or closing it can tear down the session.
+the extension heartbeat. Navigating or closing it will tear down the session.
 Keeping the shared session alive prevents it from taking focus during normal
 use.
 
@@ -119,11 +119,11 @@ Keychain. Different agent hosts can load the skill from any location, but they
 must run as the same logged-in desktop user to share that Chrome instance.
 
 This release requires `@playwright/cli` 0.1.17 and never installs or upgrades
-it. The wrapper refuses browser commands under another version rather than
+it. The wrapper refuses browser commands under a different version rather than
 assuming forward compatibility. `doctor` reports the resolved executable,
 version, and compatibility state.
 
-Complete these steps once for the macOS user and Chrome profile:
+Complete these steps once per macOS user and Chrome profile:
 
 1. Install and enable the official Playwright Extension in the Chrome profile
    that contains the signed-in sessions to automate.
@@ -160,9 +160,9 @@ Check readiness without displaying or retrieving the token:
 
 `token: stored` means an explicitly approved `connect` can authenticate without
 printing the secret. `doctor` checks only whether the Keychain item exists.
-`session: missing` is normal before that connection. `chrome: missing` means
+`session: missing` is normal before the first approved `connect`. `chrome: missing` means
 the wrapper will refuse to attach until the user opens Chrome.
-`process-token: exposed` requires the rotation procedure under Security.
+`process-token: exposed` requires the rotation procedure described under Security.
 
 Verify all enforced safeguards:
 
@@ -175,12 +175,12 @@ Verify all enforced safeguards:
 The wrapper selects `mychrome` automatically. Do not add
 `-s=mychrome` unless compatibility with an existing command requires it.
 
-The Playwright Extension permits only one active client, and a connection owned
-by another tool is not necessarily visible in this wrapper's session registry.
-Ordinary commands therefore never attach when this skill's session is missing
-or stale. Require explicit approval to take the exclusive extension
-connection. Honor approval already present in the current task; do not ask for
-it twice. Then run:
+The Playwright Extension permits only one active client at a time, and a
+connection owned by another tool is not necessarily visible in this wrapper's
+session registry. Ordinary commands therefore never attach when this skill's
+session is missing or stale. Require explicit user approval before taking the
+exclusive extension connection. Honor approval already present in the current
+task; do not request it again. Then run:
 
 ```bash
 "$SKILL_ROOT/scripts/playwright-my-chrome.sh" connect
@@ -192,7 +192,7 @@ underlying `attach` directly, or use `open`. The wrapper blocks `attach`,
 `open`, `show`, `install`, `close-all`, and `kill-all`.
 
 Do not infer approval from a generic browser task. Once `connect` reports ready,
-keep the session alive and use ordinary commands without another setup step.
+keep the session alive and issue ordinary commands without an additional setup step.
 
 The token-based extension handshake does not automatically take control of
 every tab already open in Chrome. It starts with the clean controlled tab
@@ -225,7 +225,7 @@ Use absolute paths for uploads, downloads, scripts, screenshots, and saved
 state because the shared session runs from its neutral runtime directory.
 
 Keep the session attached between related tasks. Disconnect only when the user
-asks, or when troubleshooting requires a clean attachment:
+explicitly requests it, or when troubleshooting requires a clean attachment:
 
 ```bash
 "$SKILL_ROOT/scripts/playwright-my-chrome.sh" disconnect
@@ -251,7 +251,7 @@ Inspect active Playwright sessions before cleanup:
 
 Close only a named, non-attached Playwright browser from its owning workspace
 with `playwright-cli -s=<name> close`. Detach an attached external browser.
-Let ChatGPT browser control, ChromeDriver, and other test runners close their
+Let ChatGPT browser control, ChromeDriver, and other test runners manage their
 own Chrome processes. Never use this skill to run `close-all`, `kill-all`, or a
 machine-wide Chrome kill.
 
@@ -265,20 +265,20 @@ Check an existing owned session without taking a new connection:
 performs a fresh attachment, and only after explicit user approval.
 
 If the wrapper reports a missing or invalid token, ask the user to regenerate
-and copy it in the extension, then run:
+and copy it from the extension, then run:
 
 ```bash
 "$SKILL_ROOT/scripts/store-extension-token.sh"
 ```
 
-If **Allow & select** appears despite a stored token, stop. The Keychain token
+If **Allow & select** appears despite a stored token, stop immediately. The Keychain token
 is stale or belongs to another Chrome profile. Ask the user to regenerate,
 copy, and store it; do not wait silently or attempt to read extension storage.
 
 If the helper page appears on every approved connection, run `doctor`. A
 `missing` or `stale` session indicates that Chrome, the extension, or the daemon
-is disconnecting between commands. Do not loop on `connect`. If it remains
-visible after one fresh connection, report the cleanup failure rather than
+is disconnecting between commands. Do not loop on `connect`. If the helper page
+remains visible after one fresh connection, report the cleanup failure rather than
 treating it as a requested tab.
 
 Do not use the Chrome remote-debugging checkbox, `attach --cdp`, another browser
@@ -292,7 +292,7 @@ that fallback.
   terminal history.
 - Never ask the user to paste it into chat, a file, or a command.
 - Playwright CLI passes the extension token in a Chrome connection URL during
-  attachment. If Chrome is not already running, that URL can remain in the
+  attachment. If Chrome is not already running, that URL can persist in the
   long-lived Chrome process command line. The wrapper checks the complete
   normal Chrome PID set immediately before and after attachment, detaches on
   any change, and requires token rotation if the token appears in a persistent
